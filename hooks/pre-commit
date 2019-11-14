@@ -1,0 +1,21 @@
+#!/bin/bash
+
+
+echo $(git rev-parse --show-toplevel)
+# find IP addresses used in more than 1 place
+dupes=$(find $(git rev-parse --show-toplevel) -name Vagrantfile -exec grep config.vm.network {} + \
+    | egrep -o '\d{3}\.\d{3}\.\d{3}\.\d{3}' \
+    | awk '{a[$0]++} END {for (n in a) print n, a[n]}' \
+    | awk '($2 !~ 1)' \
+    | wc -l \
+    | sed -e 's/^[ \t]*//')
+
+if [ "0" != $dupes ]
+    then
+    echo " ** Using the same IP in multiple places. **"
+    echo ""
+    echo "Run 'find $(git rev-parse --show-toplevel) -name Vagrantfile -exec grep config.vm.network {} +'  to find out where"
+    exit 1
+else
+    exit 0
+fi
