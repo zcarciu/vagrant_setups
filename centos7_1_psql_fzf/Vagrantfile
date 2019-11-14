@@ -11,6 +11,44 @@ Vagrant.configure("2") do |config|
   end
   
   # Network Settings
+  # FIXME I probably don't need this if I'm only using 1 vm
   config.vm.network "private_network", ip: "192.168.111.113"
+
+  config.vm.define "vm1"
+
+  config.vm.provision "shell", 
+    privileged: false,
+    inline: <<-SHELL
+      # yum installations
+      sudo yum update
+      sudo yum -y install git
+      sudo yum -y install postgresql-server postgresql-contrib
+
+      # download fzf from git and install
+      if [ ! -d "/home/vagrant/.fzf" ] 
+          then
+          git clone --depth 1 https://github.com/junegunn/fzf.git /home/vagrant/.fzf
+          cd /home/vagrant/.fzf && bash install 
+      fi
+
+      # set up postgres
+      sudo postgresql-setup initdb
+      sudo systemctl start postgresql
+
+      # create vagrant postgres role/user
+      # I'm sure there's a much better way to do this using ansible or something
+      # but not happening today
+      sudo su - postgres -c "psql -c 'create role vagrant'"
+      sudo su - postgres -c "psql -c 'grant postgres to vagrant'"
+      sudo su - postgres -c "psql -c 'alter role vagrant with login'"
+      psql postgres -c "
+          create table person(
+              person_id serial primary key,
+              name varchar
+          );
+          insert into person (name) values ('John Smith'), ('Some Guy');
+      "
+
+    SHELL
 
 end
