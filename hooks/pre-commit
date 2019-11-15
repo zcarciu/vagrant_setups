@@ -1,6 +1,7 @@
 #!/bin/bash
 
 # find IP addresses used in more than 1 place
+# FIXME should probably just grep for vm.network instead of config.vm.network
 dupes=$(find $(git rev-parse --show-toplevel) -name Vagrantfile -exec grep config.vm.network {} + \
     | egrep -o '\d{3}\.\d{3}\.\d{3}\.\d{3}' \
     | awk '{a[$0]++} END {for (n in a) print n, a[n]}' \
