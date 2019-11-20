@@ -1,0 +1,26 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+Vagrant.configure("2") do |config|
+  config.vm.box = "centos/7"
+
+
+  # Provider Settings
+  config.vm.provider "virtualbox" do |vb|
+    vb.memory = 1024
+    vb.cpus = 2 
+  end
+  
+  # Network Settings
+  config.vm.network "private_network", ip: "192.168.111.115"
+
+  config.vm.provision "ansible_local" do |ansible|
+    ansible.playbook = "playbook.yml"
+    ansible.inventory_path = "inventory"
+    # by vagrant adds --limit="default" otherwise which can filter 
+    # out your hosts and cause you much frustration :facepalm:
+    ansible.limit = "all"
+    #ansible.verbose = "-vvv"
+  end
+
+end

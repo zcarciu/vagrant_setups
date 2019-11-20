@@ -1,0 +1,102 @@
+---
+- name: Set up new environment
+  hosts: all
+  tasks:
+    - name: Ensure packages are installed
+      become: true
+      yum:
+        name: ['git', 'vim']
+        state: present
+        update_cache: yes
+
+    - name: Ensure python & python tools are installed
+      become: true
+      yum:
+        name: ['python', 'python-pip', 'python3', 'python3-pip', 'ipython']
+        state: present
+
+    # FIXME I believe we should be able to use yum_repository to do what the 
+    # below yum-config-manager shell command is doing but this isn't how you do it
+    # - name: Add ripgrep repository
+    #   become: true
+    #   yum_repository:
+    #     name: copr
+    #     description: COPR Repo 
+    #     baseurl: 'https://copr.fedorainfracloud.org/coprs/carlwgeorge/ripgrep/repo/epel-7/carlwgeorge-ripgrep-epel-7.repo'
+    #     enabled: yes
+
+    - name: Add ripgrep copr repo
+      become: true
+      shell: yum-config-manager --add-repo=https://copr.fedorainfracloud.org/coprs/carlwgeorge/ripgrep/repo/epel-7/carlwgeorge-ripgrep-epel-7.repo
+
+    - name: Install ripgrep
+      become: true
+      yum:
+        name: ['ripgrep']
+        state: present
+
+    - name: Clone dotfiles repo
+      git:
+        repo: 'https://github.com/zcarciu/dotfiles.git'
+        dest: $HOME/.dotfiles
+
+    - name: Create Pathogen directories
+      file:
+        name: '$HOME/.dotfiles/.vim/{{ item }}'
+        state: directory
+        recurse: true
+      with_items:
+        - autoload
+        - bundle
+
+    - name: Pull Pathogen
+      shell: curl -LSso $HOME/.dotfiles/.vim/autoload/pathogen.vim https://tpo.pe/pathogen.vim
+
+    - name: Get vim plugins
+      git:
+        repo: 'https://github.com/tpope/{{ item }}.git'
+        dest: '$HOME/.dotfiles/.vim/bundle/{{ item }}'
+      with_items:
+        - vim-fugitive
+        - vim-commentary
+
+    - name: Get soft link files
+      shell: ls -A $HOME/.dotfiles | grep -vE '\.exclude*|\.git$|\.gitignore|.*.md|\.swp$'
+      register: soft_link_files
+
+    - name: Backup existing rc files
+      copy:
+        src: "{{ lookup('env','HOME') }}/{{ item }}"
+        dest: "{{ lookup('env','HOME') }}/{{ item }}.bak"
+      with_items:
+        - .bashrc
+        - .bash_profile
+      
+    - name: Delete existing rc files
+      file:
+        path: "{{ lookup('env','HOME') }}/{{ item }}"
+        state: absent
+      with_items:
+        - .bashrc
+        - .bash_profile
+
+    - name: Ensure softlinks are created
+      file:
+        src: "{{ lookup('env','HOME') }}/.dotfiles/{{ item }}"
+        dest: "{{ lookup('env','HOME') }}/{{ item }}"
+        state: link
+      with_items:
+        - "{{ soft_link_files.stdout_lines }}"
+
+
+    # fzf is down here because otherwise it gets 
+    # added to ~/.bashrc because it gets "overwritten"
+    - name: Pull fzf repo
+      git:
+        repo: 'https://github.com/junegunn/fzf.git'
+        depth: 1
+        dest: $HOME/.fzf
+
+    - name: Install fzf
+      shell: "{{ lookup('env', 'HOME') }}/.fzf/install --all"
+
