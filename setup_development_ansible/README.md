@@ -1,4 +1,4 @@
-## An anisble playbook to set up my development enviroment exactly how I want it. 
+## An anisble playbook to set up my development enviroment.
 
 ### TODO:
  * Make it compatible with Debian and OSX using variables
